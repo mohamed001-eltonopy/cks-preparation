@@ -1,6 +1,6 @@
 # cks-preparation
 
-## understanding of the Kubernetes attack surface 
+## Understanding of the Kubernetes attack surface 
 
 **the fources of Cloud-Native Security**
 There were multiple areas that were vulnerable to attack,
