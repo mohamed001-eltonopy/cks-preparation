@@ -100,7 +100,43 @@ The CIS website provides cybersecurity benchmarks for over 25 different vendors 
   **What about communication between applications within the cluster**
   By default all PODs can access all other PODs within the cluster,You can restrict access between them using **Network Policies**. 
     
-    
-    
+## authentication in a Kubernetes:
+Different users that interact with kubernetes cluster :
+- Administrators that access the cluster to perform administrative tasks  
+- The developers that access to cluster to test or deploy applications
+- End users who access the applications deployed on the cluster 
+- third party applications accessing the cluster for integration purposes.
+
+**How to secure management access to the cluster through authentication and authorization**
+we are left with two types of users:
+- **Users** Humans, such as the Administrators and Developers.
+- **Service Accounts** Robots such as other processes/services or applications that requires access to the cluster.
+  
+- Kubernetes doesn't manage users in cluster So it can't create users or view the list of users it relies on an external source like:
+  **file with user details** or **certificates** or a third party identity service like **LDAP** to manage these users.
+  However in case of Service Accounts kubernetes can manage them, You can create and manage service accounts using the Kubernetes API.
+  #kubernetes create serviceaccount sa1
+  
+- All user access is managed by the **API server** by authenticates all of these requests.
+- how does the kube-api server authenticate?
+      - usernames and static password file
+      - static token file for each user 
+      - certificates
+      - LDAP  
+  **For usernames and static password file** You can create a list of users and their passwords in a csv file,
+      The file has three columns (password123,user-name,User-ID) then pass the file name as an option to the kube-api server file.
+      /etc/kubernetes/manifests/kube-apiserver.yaml (--basic-auth-file=users.svc)
+      **SO when you accessing the API server specify the user and password like this:** 
+        #curl -v -k https://master-node-ip:6443/api/v1/pods -u "username:password123"   
+      - you can assign users to specific groups (password123,user-name,User-ID,group1).
+  
+  **For static token file** you can pass the token file as an option token-auth-file to the kube-api server (--token-auth-file=users.svc)
+       While authenticating specify the token as an Authorization bearer token to your requests like this.
+        #curl -v -k https://master-node-ip:6443/api/v1/pods --header "Authorization: Bearer lwesniwoniwnwiwenin"  
+
+  
+  
+  
+  
                 
                 
