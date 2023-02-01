@@ -354,6 +354,102 @@ we are left with two types of users:
          - Then view the logs using the #docker logs container-id
       
   
+  ## Tls Certificate:
+      What is the CA server and where is it located in kubernetes?
+      The CA is really just the pair of key and certificate files on master node ,Whoever gains access to these pair of files can sign any certificate
+       for the Kubernetes,They can create as many users as they want and assign to have access to ckuster with different previliages for
+       these users,These files need to be protected So we place them on a server called "CA server" on master node.
+  
+      How to automate managing the certificates sign request as well as to rotate certificates when they expire?
+      Kubernetes has a built-in Certificates API.
+      - Adminstrator Creates CertificateSigningRequrst Object .
+      - Review the Requests , Then Approve it by the adminstrator of the cliuster.
+      - Share the certificates with users  
+  
+      EXamble:
+          - A user first creates a key  >>  #openssl genrsa -out  jane.key 2048
+          - generates a CSR using the key   >>    #openssl req -new -key  jane.key  "/CN=jane"  -out jane.csr   >> sends the request to the administrator.
+          -  The administrator takes the key and creates CSR Object "that looks like any object inside k8s pod,service,.."
+             The kind, is CertificateSigningRequest & the spec section, groups: specify the groups the user should be part of , usages: list the usages 
+                of the account, The request: field is where you specify the certificate signing request sent by the user it must be encoded.
+                          #cat  jane.csr | base64
+          - Once the Object is done then all CSR can viewed by the adminstrator of the cliuster. >> # kubectl get csr 
+          -  Review the Requests , Then Approve it    >> #kubectl  certificate  approve  jane 
+          - Kubernetes assigns the certificate using the CA key pairs and generates a certificate that can be shared with  the user.
+          - to view the certificate     >> #kubectl get csr jane -o yaml   
+          - The generated certificate but it is in a base64 encoded format So to decode it to be shared with user >># echo "KDI...KKSNW" | base64 --decode
+            
+      Controller Manager:Is responsible for all the certificate related operations that have different controller for cert like"CSR Approving,CSR signing"
+          - if anyone has to sign certificates, they need the CA servers, roote certificate, and private key, that existed inside 
+            "kube-controller-manager.yaml"    >> # cat /etc/kubernetes/manifests/kube-controller-manager.yaml  >> "--cluster-signing-cert,key-file" 
+  
+  
+  ## KubeConfig in Kubernetes:
+      Instead of each time the user uses the certificate file and key to query the kubernetes Rest API for a list of pods using Curl or kubectl command:
+        - curl https://my-kube-playground:6443/api/v1/pods    --key admin.key   --cert  admin.crt   --cacrt   ca.crt
+        - kubectl get pods --server my-kube-playground:6443  --client-key admin.key  --client-certificate  admin.crt  --certificate-authority  ca.crt
+|        then validated by the API server to authenticate the user,is a tedious task SO move these information to a configuration file called as 
+          "KubeConfig" and specify it as optionin your command. >> #kubectl get pods --kube-config  config 
+        - By default the kubectl tool looks for a file named "config" under a directory .kube under the users home directory, So So if you create the 
+          KubeConfig file there, you don’t have to specify the path to the file explicitly in the kubectl command. >> #kubectl get pods 
+  
+        -  The config file has 3 sections. Clusters, Users and Contexts:
+                  Clusters: are the various kubernetes clusters that you need access to. ex:"devlopment"
+                  users: user accounts that needs access to these clusters , each user have different priviliages   ex: "developer"
+                  contexts: connect these users with its cluster  ex: "devlopment@developer"
+        - That way you don’t have to specify the user certificates and server address in each and every kubectl So the:
+               The server specification " --server my-kube-playground:6443 "  goes to "cluster sec"
+                 the admin users keys and certificates " --client-key admin.key  --client-certificate  admin.crt  --certificate-authority  ca.crt" 
+                  goes into the users section.
+  
+       **The kubeConfig is in a YAML**  
+            - It has apiVersion: set to v1 , The kind: is config.... And then it has 3 sections:
+              1- clusters       2- users      3- contexts
+            - how does kubectl know which context to chose from if you have multiple contexts?
+                 the default context to use by adding a field "current-context" to the kubeconfig file.
+            - to view the current kubeConfig file :
+                  #kubectl config view 
+            - to view the custom kubeConfig file:
+                   #kubectl config view --kubeconfig=my-custom-config
+            - to change the current-context to the prod-user@production context
+                  #kubectl config use-context  prod-user@production
+            - certificates in kubeConfig:
+                  You have seen path to certificate files mentioned in kubeconfig ex: " certificate-authority: /etc/kubernetes/pki/a.crt "
+                  But there's another way to specify the certificate credentials by passing the encoded certificate like this : 
+                          ex: " certificate-authority-data: KFIENFI.....OIENV  "
+                    
+    
+    ## API Groups in kubernetes:
+       what is the Kubernetes API?
+          - Any interacting with the cluster is done through "the Kube API server" by using **kubectl command** or **curl**
+            ex:  to check the versio      >> curl https://kube-master:6443/version 
+                  to get the list of pods  >>  curl https://kube-master:6443/api/v1/pods
+          
+          - What these API Path (/version & /api ) ?
+               The Kubernetes API is grouped into multiple such groups based on their purpose ex: "/apis, /version, /healthz, /api, /metrics, /logs"
+                /version : is for viewing the version of the cluster 
+                /healthz &  /metrics : to monitor the health of the cluster.
+                /logs : Is for integrating with third party logging applications.
+  
+          - The DIferrence between these Apis (/api  &&  /apis) ?
+              These APIs are categorized into two: 
+                 - The core group **/api**: is where all core functionality exists. Such as namespaces, pods, replicas,.....etc ex: /api/v1/pods,nodes,,,,
+                 - The named group **/apis**: all the newer features are available to these named groups...Such as groups for
+                 /apps, /storage.k8s.io, /networking.k8s.io ....and inside each one you will have multiple resources that associated with multiple actions  
+                like for **/apps** group under it deployments, replicasets , statfulsets you can do action list,delete,get >>ex: /apis/apps/v1/deployments  
+                     
+           - To know what the API groups on your Kubernetes cluster ?   you have 2 options   
+                # curl  http://localhost:6443  -k  --key admin.key   --cert  admin.crt   --cacrt   ca.crt
+              OR))
+                Start a kubectl proxy client that launches a proxy service locally on port 8001 and uses credentials and certificates from your kubeconfig
+                 file to access the cluster.        >>        #kubectl  proxy       then  >> #curl  http://localhost:8001  -k
+        
+          - NOTE:
+              The Kube proxy and kubectl proxy well they are not the same
+              kubectl proxy: It is used to enable connectivity between parts and services across different nodes in the cluster.
+                
+  
+  
   
   
   
