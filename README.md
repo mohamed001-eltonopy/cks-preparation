@@ -444,10 +444,38 @@ we are left with two types of users:
                 Start a kubectl proxy client that launches a proxy service locally on port 8001 and uses credentials and certificates from your kubeconfig
                  file to access the cluster.        >>        #kubectl  proxy       then  >> #curl  http://localhost:8001  -k
         
-          - NOTE:
+           - NOTE:
               The Kube proxy and kubectl proxy well they are not the same
               kubectl proxy: It is used to enable connectivity between parts and services across different nodes in the cluster.
                 
+        
+    ## Authorization :
+       Is a way to restrict what users can do in our cluster ...
+       There are different authorization mechanisms :
+          - Node authorization: It handle Any request that access to your cluster through "kube-apiserver" for managment purpose like users from out side 
+              and kubelet or nodes within the cluster and must be part of system nodes group to grant access to cluster 
+  
+          - Attribute-based authorization "ABAC": is where you associate a user or a group of users with a set of permissions by creating a policy
+              file with a set of policies defined in JSON format and that policy must be created for each user and group. (So It's difficult to manage)
+  
+          - Role-based authorization "RBAC" : It define a rule with a set of permissions required for users then associate all the users to that rule.
+              So you just change in a rule that reflect this change to all users that attached with that rule.
+  
+          - Webhook:  It used to manage authorization externally using third-party tool like open "policy agent" decide if the
+              user should be permitted or not.
+          - Always allow : allows all requests without performing any authorization checks.
+          - Always deny : denies all requests 
+  
+     These Authorization modes is configured in "kube-apiserver" file>> --authorization-mode=Node,RBAC,Webhook   >>  "your request is authorized in order"
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
