@@ -470,10 +470,36 @@ we are left with two types of users:
   
   
   
+  ## RBAC:
+    (1) We create a Role by define a Role Object:
+        - we create a role definition file with the API version set to rbac.authorization.K8s
+        - kind said to role
+        - metadata that define what this role for .. ex: developer
+        - then we specify rules .. Each rule has three sections:   1)  apiGroups :  for core group You can leave the API group's section as blank 
+                                                                                    for any other group you specify the group name.
+                                                                2) resources :  the resources that we want to give developers access to ex: "pods"
+                                                                3) verbs : The actions that they can take are list, get, create.
+                                                                4) resourceNames: to restrict access to specific resource  
+        **Note**
+          - We can add multiple rules for a single role .
+    
+     (2) link the user to that role.
+         For this we create another object called RoleBinding : The role binding object links A user object to a role.
+        - we create a rolebinding definition file with the API version set to rbac.authorization.K8s
+        - kind said to rolebinding
+        - metadata that define what this rolebinding for .. ex: devuser-developer-binding 
+        - The subjects is where we specify the user details.
+        - The roleRef section is where we provide the details of the role we created
+        
+      **Note** the roles and role bindings fall under the scope of namespace.
+      **Note** If you want to limit the dev user's access within a different namespace then specify the namespace within the metadata of 
+               the definition file while creating them.
   
-  
-  
-  
+      **Note** To Test if you have access to a particular resource in the cluster:
+              #kubectl  auth  can-i   create  deployments       "test yourself previliges"
+              #kubectl  auth  can-i   delete  pods   --as  dev-user         "test another user previliges"
+              #kubectl  auth  can-i   delete  pods   --as  dev-user   --namespace   test        "test another user previliges in another namespace"
+              
   
   
   
