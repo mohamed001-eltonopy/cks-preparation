@@ -502,8 +502,67 @@ we are left with two types of users:
               
   
   
+  ## Cluster Roles and Role Bindings:
+     - roles and role bindings are crreated within namespace
+     - cluster roles and cluster role bindings are Cluster Scope
   
+    
+ ## Securing the Kubelete:
+    - The Kubelet in the Kubernetes worker node registers the node with the Kubernetes cluster, receives instructions to load a container or a pod on the 
+      node, monitor the state of the pod and the containers and reports the status to the Kube-apiserver.  
+    - You must always manually install the Kubelet on your worker nodes 
+    - (kubelet.service) while configuring the Kubelet as service, It has several options configured ex:(--container-runtime,--kubeconfig,--version,..)
+    - with the release of version 1.10, most of these parameters inside **kubelet.service** were moved to
+        another file called the (Kubelet-config.yaml) file, we pass the path of this file as a command " --config " to (kubelet.service) file.
+    
+   **How to inspect the current configurations of a Kubelet?** 
+    #ps -aux | grep kubelet   ,,,,>>It shows the different options configured including the path to the Kubelet-config file.
+           Inside "Kubelet-config file" It gives us list of parameters configured for the Kubelet."
+    
+   **How do we make sure that the Kubelet only responds to requests from the Kube-apiserver and not anyone else?**
+    The Kubelet serves on two ports:
+      - port 10250 : where the Kubelet serves its API server that allows full access.
+      - port 10255 :  where the Kubelet serves its API server that that allows unauthenticated unauthorized read-only access.
   
+   **How do you implement security on the Kubelet?**
+     Any request that comes to the Kubelet is first authenticated and then authorized.
+    For Authentication:
+        - check if the user or request has access to the API..... 
+          And The best practice is to "disable" anonymous authentication and enable one of the supported authentication mechanisms.
+          (( Disable anonymous authentication )) EX: if you did a curl to the API server at port 10250
+                 - curl -sk https://localhost:/10250/pods/          ..> it returns the list of pods...>> As by default the Kubelet permits all requests
+                      to go through without any kind of authentication..."these requests are marked as "anonymous users" part of an unauthenticated group"
+                 - This behavior can be changed :
+                      By "disable" anonymous authentication inside "kubelet.service" file >>   "--anonymous-auth=false" or in 
+                                                "kubelet-config.yaml" file  under "authentication" filed
+                                                                                                
+          (( Enable one of the supported authentication mechanisms )) 
+                There are two authentication mechanism :
+                1- certificate-based authentication : create a pair of certificates for serving the Kubelet service, 
+                            then provide the CA file using the " client-ca-file=/path/to/ca " in the Kubelet service 
+                           - Now To access the api you must provide the client certificates to authorize it...>> 
+                               curl -sk https://localhost:/10250/pods/     --key kubelet-key.pem   --cert  --kubelet-cert.pem
+                           - The Kube API server also has to authenticate to the Kubelet to interact with it, the API server must have 
+                               the Kubelet client certificate and key configured.... inside "kube-apiserver.service" file.
+                2- API bearer token-based authentication : 
+    For Authorization :
+        - check what areas of the API can the user access, and what operations can they perform.
+         The default authorization mode is always allowed access to API, To prevent this, we set the authorization mode to "webhook"
+          That will makes the Kubelet makes a call to the API server to determine whether each request can be authorized or not 
   
+   **NOTE**
+      - The Kubelet, by default, allows anonymous authentication., and to prevent it we should to set the " anonymous-auth=false "
+      - Kubelet supports two authentication mechanisms,1- the certificate-based authentication "set the clientCAfile path to the Kubelet", 
+                    By default, the Kubelet allows all requests without authorization.To configure authorization, set the authorization mode to webhook
+                                                      2- the bearer token-based authentication.
+      - By default, the read-only port is set to 10255, which enables the metric server to expose metrics This can be disabled by setting it to zero.
+      EX:
+       in "kubelet.service" :
+          - --anonymous-auth=false
+          - --client-ca-file=/path/to/ca.crt/
+          - --authorization-mode=webhook
+          - --read-only-port=0
   
+
+      
   
