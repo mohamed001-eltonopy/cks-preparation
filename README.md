@@ -564,5 +564,77 @@ we are left with two types of users:
           - --read-only-port=0
   
 
+ ## Kubectl proxy:
+    Start a Kubectl proxy client that launches a proxy service locally on port 8001 by default, and uses the credentials and certificates
+      from your Kube config file to access the cluster and forward your request to the Kube API server to access any anyservice within your cluster.
+      #kubectl proxy      >> launches a proxy service locally on port 8001 to access the cluster.
+      #curl https://localhost:8001  -k    >> Then try to access the API server on local host at port 8001 that This will list all available APIs at root.
       
+  **Note**
+      - the proxy runs only on your laptop, and is only accessible within your laptop it accepts traffic at 127.0.0.1 only.
+  
+  **What all can you do with this Kubectl proxy?**
+    -  make any kind of API requests to the API server
+    - you can proxy your request to any service that's running within the Kubernetes cluster.
+    - To access any Service that is hosted within the cluster With Kubectl 
+      you could forward a port from your laptop to a port on a service within the Kubernetes cluster.
+         #kubectl port-forward  service/nginx   28080:80
+      Now to access the service running on the remote cluster, we can just do a curl to localhost to port 28080,
+        #curl https://localhost:28080/
+  
+  **TEST**
+     Run the kubectl proxy in the background on port 8002 instead?
+      #kubectl proxy --port 8002 &
+    
+
+  ## Secure Kubernetes DashBoard:
+     - by default, the dashboard is not accessible outside of the cluster,
+    How do you access the Kubernetes dashboard hosted on a cluster?
+      - run the kubectl proxy command   >> #kubectl proxy     >> " which creates a proxy on local host that proxies all requests to the API server "
+      - Then we can now access a service within the cluster through this proxy port"8001"
+        #https://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy 
+  
+      - is to have an authentication proxy configured such as the auth to proxy,They can perform authentication,and on success,route traffic to the 
+         dashboard.
+  
+    - you can login to Kubernetes DashBoard using Token OR Kubeconfig
+      **TEST**
+         - Get the token of admin-user and login into UI. Check whether you can modify any of resources
+              #kubectl decribe secrets -n kubernetes-dashboard admin-user 
+  
+         - As you can see the admin-user is way too powerful. Let's now create a new Service Account readonly-user in the kubernetes-dashboard namespace 
+              with view permissions to all resources in all namespaces.
+              ClusterRole name : view
+              ClusterRoleBinding name :readonly-user-binding
+         **Test** 
+            cat <<EOF | kubectl apply -f -
+  
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+               name: readonly-user
+               namespace: kubernetes-dashboard  
+            EOF
+          ------
+            cat <<EOF | kubectl apply -f -
+  
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: readonly-user-binding
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: view
+            subjects:
+            - kind: ServiceAccount
+              name: readonly-user
+              namespace: kubernetes-dashboard
+        
+            EOF
+  
+  
+  
+  
+  
   
